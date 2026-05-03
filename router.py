@@ -622,6 +622,48 @@ async def qwen_execute(
         return Response(content=json.dumps({"error": str(e)}), status_code=502), None
 
 
+async def _sonnet_direct(
+    messages: list, body_json: dict, headers: dict
+) -> tuple[Optional[Response], Optional[dict]]:
+    """Send the full conversation directly to Sonnet (used for hard/7-10)."""
+    sonnet_body = {
+        **body_json,
+        "model": CLOUD_MODEL,
+        "stream": False,
+        "messages": messages,
+    }
+    try:
+        r = await _client.post(
+            CLOUD_AI_URL,
+            content=json.dumps(sonnet_body).encode(),
+            headers=headers,
+            timeout=300.0,
+        )
+        r.raise_for_status()
+        resp = r.json()
+
+        if "usage" in resp:
+            usage = resp["usage"]
+            await record_model_usage(
+                CLOUD_MODEL,
+                input_tokens=usage.get("prompt_tokens", 0),
+                output_tokens=usage.get("completion_tokens", 0),
+            )
+        else:
+            input_text = json.dumps(sonnet_body)
+            output_text = json.dumps(resp.get("choices", []))
+            await record_model_usage(
+                CLOUD_MODEL,
+                input_tokens=_estimate_tokens(input_text),
+                output_tokens=_estimate_tokens(output_text),
+            )
+
+        return None, resp
+    except Exception as e:
+        log.error("DIRECT SONNET ERROR: %s", e)
+        return Response(content=json.dumps({"error": str(e)}), status_code=502), None
+
+
 async def sonnet_polish(
     question: str, worker_reply: str, headers: dict
 ) -> Optional[str]:
@@ -1118,7 +1160,31 @@ async def handle_routing(request: Request):
         reply = build_reply((msg.get("content") or "").strip(), difficulty, "simple")
         return make_sse(reply, LOCAL_MODEL) if streaming else make_json(data, reply)
 
-    # ── Medium / Hard: plan + execute concurrently → polish ───────────────────
+    # ── Hard (7-10): direct to Sonnet ───────────────────────────────────────
+    if tier == "hard":
+        log.info("🔴 HARD → direct Sonnet (%d/10)…", difficulty)
+        err, data = await _sonnet_direct(messages, body_json, headers)
+        if err:
+            return err
+
+        choice = data["choices"][0]
+        msg = choice.get("message", {})
+
+        if choice.get("finish_reason") == "tool_calls" or "tool_calls" in msg:
+            return (
+                make_tool_sse(data)
+                if streaming
+                else Response(
+                    content=json.dumps(data).encode(),
+                    status_code=200,
+                    media_type="application/json",
+                )
+            )
+
+        reply = build_reply((msg.get("content") or "").strip(), difficulty, "hard")
+        return make_sse(reply, CLOUD_MODEL) if streaming else make_json(data, reply)
+
+    # ── Medium (4-6): plan + execute concurrently → polish ───────────────────
     if not plan:
         log.info("🔴 Planning (%s)…", tier)
         # Run plan and execute concurrently; keep both results.
@@ -1204,7 +1270,7 @@ async def handle_routing(request: Request):
 
 if __name__ == "__main__":
     log.info(
-        "Router :9000 | simple(1-%d)→Qwen3 | medium(%d-%d)/hard(8-10)→Sonnet×2+Qwen3",
+        "Router :9000 | simple(1-%d)→Qwen3 | medium(%d-%d)→Sonnet×2+Qwen3 | hard(7-10)→Sonnet direct",
         SIMPLE_MAX,
         SIMPLE_MAX + 1,
         MEDIUM_MAX,

@@ -28,7 +28,7 @@
   "routing": {
     "difficulty_bands": {
       "simple_max": 3,
-      "medium_max": 7
+      "medium_max": 6
     },
     "sonnet_tokens_saved_per_simple": 900,
     "max_ctx_messages": 12,

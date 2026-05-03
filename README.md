@@ -9,8 +9,8 @@ AI Router sits between your application and AI model APIs as a proxy. Every inco
 | Tier | Difficulty | Models Used | Strategy |
 |------|-----------|-------------|----------|
 | **Simple** | 1–3 | Qwen3 (local) only | Direct execution, zero cloud cost |
-| **Medium** | 4–7 | Sonnet + Qwen3 | Concurrent plan → execute → polish |
-| **Hard** | 8–10 | Sonnet + Qwen3 | Same as medium |
+| **Medium** | 4–6 | Sonnet + Qwen3 | Concurrent plan → execute → polish |
+| **Hard** | 7–10 | Sonnet (cloud) only | Direct to Sonnet, full conversation |
 
 ### The Three-Model Pipeline
 
@@ -24,11 +24,10 @@ User Question
        │
        ├─ Simple (1–3) ──────────────────────────► Qwen3 local: direct answer
        │
-       ├─ Medium (4–7) ──────────────────────────► Sonnet plan + Qwen3 execute (concurrent)
+       ├─ Medium (4–6) ──────────────────────────► Sonnet plan + Qwen3 execute (concurrent)
        │                                            └─► Sonnet polish
        │
-       └─ Hard (8–10) ───────────────────────────► Sonnet plan + Qwen3 execute (concurrent)
-                                                  └─► Sonnet polish
+       └─ Hard (7–10) ───────────────────────────► Sonnet direct (full conversation)
 ```
 
 Every model call sends only what that specific call needs — strict token caps prevent waste.
@@ -36,7 +35,7 @@ Every model call sends only what that specific call needs — strict token caps 
 ## Features
 
 - **Token discipline** — each model call has a hard token budget (classify: 10, plan: 400, polish: 500, execute: 8192)
-- **Concurrent execution** — planning and execution run in parallel for medium/hard questions
+- **Concurrent execution** — planning and execution run in parallel for medium questions; hard questions go directly to Sonnet
 - **Cost tracking** — real-time per-model cost estimation with cumulative savings dashboard
 - **Conversation state** — maintains context across turns with intelligent trimming (max 12 messages)
 - **Tool support** — handles tool-calling loops between local model and external tools
@@ -95,7 +94,7 @@ Edit `config.json` to set your model endpoints, pricing, and behavior:
     }
   },
   "routing": {
-    "difficulty_bands": { "simple_max": 3, "medium_max": 7 },
+    "difficulty_bands": { "simple_max": 3, "medium_max": 6 },
     "max_ctx_messages": 12,
     "max_tool_result_chars": 8000
   },
@@ -165,7 +164,7 @@ Dashboard auto-refreshes every 5 seconds.
 - **Difficulty Classifier** (`rate_difficulty`) — rates each question 1–10 using the classify model with a 10-token budget
 - **Conversation State Manager** (`_conv_state`) — tracks tier, difficulty, plan, and question per conversation via HMAC-SHA256 keys
 - **Message Processor** — trims context to max messages, strips tool messages for Sonnet calls, truncates oversized tool results
-- **Concurrent Runner** — uses `asyncio.gather` to run planning and execution in parallel for medium/hard questions
+- **Concurrent Runner** — uses `asyncio.gather` to run planning and execution in parallel for medium questions; hard questions route directly to Sonnet
 - **Metrics Tracker** — per-model token counting with cost estimation from configurable pricing data
 
 ### Token Budgets
@@ -176,6 +175,7 @@ Dashboard auto-refreshes every 5 seconds.
 | `plan` | Sonnet (cloud) | 400 | Generate numbered execution steps |
 | `polish` | Sonnet (cloud) | 500 | Improve local model's answer |
 | `execute` | Qwen3 (local) | 8192 | Execute plan and produce final answer |
+| `direct` | Sonnet (cloud) | Configurable | Hard tier: full conversation in one call |
 
 ## License
 
