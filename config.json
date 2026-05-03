@@ -1,0 +1,55 @@
+{
+  "models": {
+    "cloud": {
+      "name": "claude-sonnet-4.6",
+      "url": "http://localhost:4141/v1/chat/completions",
+      "pricing": {
+        "input": 3.0,
+        "output": 15.0
+      }
+    },
+    "local": {
+      "name": "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+      "url": "http://localhost:8081/v1/chat/completions",
+      "pricing": {
+        "input": 0.0,
+        "output": 0.0
+      }
+    },
+    "classify": {
+      "name": "gpt-4o-mini",
+      "url": "http://localhost:4141/v1/chat/completions",
+      "pricing": {
+        "input": 0.1,
+        "output": 0.4
+      }
+    }
+  },
+  "routing": {
+    "difficulty_bands": {
+      "simple_max": 3,
+      "medium_max": 7
+    },
+    "sonnet_tokens_saved_per_simple": 900,
+    "max_ctx_messages": 12,
+    "max_tool_result_chars": 8000
+  },
+  "token_budgets": {
+    "classify_max_tokens": 10,
+    "plan_max_tokens": 400,
+    "polish_max_tokens": 500,
+    "execute_max_tokens": 8192
+  },
+  "prompts": {
+    "classify_sys": "Rate difficulty for a local model. Reply with ONE digit 1-10. 1=chitchat/greetings, 3=simple fact, 5=moderate reasoning, 7=expert knowledge, 10=cutting-edge research. No other text.",
+    "plan_sys": "You are an orchestrator. A local model will execute your plan with tools. Write a numbered execution plan only - no answers, no code. Max 8 steps. Be specific about tools and edge cases.",
+    "polish_sys": "Senior reviewer. Fix errors, fill gaps, improve clarity in the answer below. Reply with the improved answer only. No preamble. Be concise.",
+    "worker_prefix": "You are a worker agent. Follow the plan exactly. Use tools as directed. Be thorough but concise."
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 9000,
+    "request_timeout": 300.0,
+    "connect_timeout": 10.0
+  }
+}
