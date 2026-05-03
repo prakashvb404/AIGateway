@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Router Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3348;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --accent: #6366f1;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --orange: #f97316;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; min-height: 100vh; }
+
+    /* header */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; border-bottom: 1px solid var(--border);
+      background: var(--surface); position: sticky; top: 0; z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; }
+    .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .live-badge { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--green); border:1px solid #166534; background:#052e16; padding:4px 10px; border-radius:20px; }
+    .live-dot { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse 1s infinite; }
+    #last-updated { color:var(--muted); font-size:11px; }
+
+    /* layout */
+    main { padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+
+    /* hero savings banner */
+    .savings-hero {
+      background: linear-gradient(135deg, #0f1f3d 0%, #1a1d27 60%, #1a0f2e 100%);
+      border: 1px solid #2e3348;
+      border-radius: 14px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+    .savings-hero-left { flex: 1; }
+    .savings-hero-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
+    .savings-hero-amount { font-size: 42px; font-weight: 800; color: var(--green); line-height: 1; }
+    .savings-hero-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .savings-hero-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+    .savings-pct-ring { position: relative; width: 90px; height: 90px; }
+    .savings-pct-ring svg { transform: rotate(-90deg); }
+    .savings-pct-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .savings-pct-num { font-size: 18px; font-weight: 800; color: var(--green); }
+    .savings-pct-text { font-size: 9px; color: var(--muted); text-transform: uppercase; }
+    .tier-pill {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 4px 12px; border-radius: 20px;
+    }
+    .pill-bronze   { background:#431407; color:#f97316; border:1px solid #9a3412; }
+    .pill-silver   { background:#1c1c1e; color:#d4d4d8; border:1px solid #52525b; }
+    .pill-gold     { background:#422006; color:#facc15; border:1px solid #a16207; }
+    .pill-platinum { background:#0c1929; color:#38bdf8; border:1px solid #0369a1; }
+    .pill-diamond  { background:#052e16; color:#4ade80; border:1px solid #166534; }
+
+    /* top stats row */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px 16px; display: flex; flex-direction: column; gap: 5px;
+      transition: border-color .2s;
+    }
+    .stat-card:hover { border-color: var(--accent); }
+    .stat-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .8px; }
+    .stat-value { font-size: 24px; font-weight: 700; }
+    .stat-sub { color: var(--muted); font-size: 10px; }
+    .c-accent{color:var(--accent)} .c-green{color:var(--green)} .c-yellow{color:var(--yellow)}
+    .c-red{color:var(--red)} .c-blue{color:var(--blue)} .c-purple{color:var(--purple)} .c-orange{color:var(--orange)}
+
+    /* model cards */
+    .model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .model-card {
+      background: var(--surface2); border-radius: 10px; padding: 16px;
+      border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px;
+    }
+    .model-card-header { display: flex; align-items: center; justify-content: space-between; }
+    .model-name { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .model-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .model-type { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .model-requests { font-size: 28px; font-weight: 800; }
+    .model-bar-row { display: flex; flex-direction: column; gap: 4px; }
+    .model-bar-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+    .model-bar-track { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .model-bar-fill { height: 100%; border-radius: 2px; transition: width .6s ease; }
+    .model-stats-row { display: flex; gap: 16px; }
+    .model-stat { display: flex; flex-direction: column; gap: 2px; }
+    .model-stat-label { font-size: 10px; color: var(--muted); }
+    .model-stat-val { font-size: 13px; font-weight: 600; }
+    .model-cost-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+    .cost-local { background: #052e16; color: var(--green); border: 1px solid #166534; }
+    .cost-cloud { background: #450a0a; color: var(--red); border: 1px solid #991b1b; }
+
+    /* two-col row */
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media(max-width:900px){.row{grid-template-columns:1fr}}
+
+    /* panels */
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .panel-header {
+      padding: 12px 18px; border-bottom: 1px solid var(--border);
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
+      color: var(--muted); display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-body { padding: 16px; }
+
+    /* tier bars */
+    .tier-row { display: flex; flex-direction: column; gap: 14px; }
+    .tier-item { display: flex; flex-direction: column; gap: 6px; }
+    .tier-label-row { display: flex; justify-content: space-between; align-items: center; }
+    .tier-name { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .tier-badge { font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 700; }
+    .badge-simple { background:#052e16; color:var(--green); border:1px solid #166534; }
+    .badge-medium { background:#422006; color:var(--yellow); border:1px solid #854d0e; }
+    .badge-hard   { background:#450a0a; color:var(--red); border:1px solid #991b1b; }
+    .tier-count { font-weight: 700; }
+    .tier-pct { color: var(--muted); font-size: 10px; }
+    .bar-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+    .fill-simple{background:var(--green)} .fill-medium{background:var(--yellow)} .fill-hard{background:var(--red)}
+
+    /* token donut */
+    .token-split { display:flex; align-items:center; gap:20px; }
+    .donut-wrap { position:relative; width:100px; height:100px; flex-shrink:0; }
+    .donut-wrap svg { transform:rotate(-90deg); }
+    .donut-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+    .donut-total { font-size:16px; font-weight:800; }
+    .donut-lbl { color:var(--muted); font-size:10px; }
+    .legend { display:flex; flex-direction:column; gap:8px; }
+    .legend-item { display:flex; align-items:center; gap:8px; font-size:12px; }
+    .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .legend-val { margin-left:auto; font-weight:700; }
+
+    /* call table */
+    .call-table { width:100%; border-collapse:collapse; }
+    .call-table th { text-align:left; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.6px; padding:0 0 10px 0; border-bottom:1px solid var(--border); }
+    .call-table th:not(:first-child){text-align:right}
+    .call-table td { padding:9px 0; border-bottom:1px solid var(--border); font-size:12px; }
+    .call-table tr:last-child td{border-bottom:none}
+    .call-table td:not(:first-child){text-align:right}
+    .call-icon{font-size:14px;margin-right:6px}
+
+    /* activity */
+    .activity-list,.conv-list { display:flex; flex-direction:column; gap:5px; max-height:220px; overflow-y:auto; }
+    .activity-list::-webkit-scrollbar,.conv-list::-webkit-scrollbar{width:3px}
+    .activity-list::-webkit-scrollbar-thumb,.conv-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+    .activity-item,.conv-item { display:flex; align-items:center; gap:10px; padding:7px 10px; background:var(--surface2); border-radius:6px; font-size:12px; animation:slideIn .3s ease; }
+    @keyframes slideIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+    .act-time{color:var(--muted);min-width:52px}
+    .act-diff{min-width:22px;text-align:right;font-weight:700}
+    .conv-key{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+
+    .empty{color:var(--muted);text-align:center;padding:20px;font-size:12px}
+    #error-banner{display:none;background:#450a0a;border:1px solid #991b1b;color:var(--red);padding:10px 18px;border-radius:8px;font-size:12px}
+    .num{font-variant-numeric:tabular-nums}
+
+    /* cost trend chart */
+    #trend-chart-wrap { position: relative; }
+    #trend-chart { width: 100%; height: 120px; display: block; }
+    .trend-line { fill: none; stroke: #22c55e; stroke-width: 2; stroke-linejoin: round; }
+    .trend-area { fill: url(#savings-grad); }
+    .trend-dot { fill: #22c55e; stroke: var(--bg); stroke-width: 2; opacity: 0; transition: opacity .15s; }
+    .trend-grid { stroke: var(--border); stroke-width: 0.5; stroke-dasharray: 4 4; }
+    .trend-label { fill: var(--muted); font-size: 9px; font-family: inherit; }
+    #trend-tooltip { position: absolute; display: none; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 11px; pointer-events: none; z-index: 50; white-space: nowrap; }
+    #trend-tooltip .tt-time { color: var(--muted); }
+    #trend-tooltip .tt-savings { color: var(--green); font-weight: 700; }
+    .trend-hover-line { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 2; opacity: 0; transition: opacity .15s; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div> AI Router</div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <span id="last-updated" style="color:var(--muted);font-size:11px">–</span>
+    <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+    <button id="pause-btn" onclick="togglePause()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit">PAUSE</button>
+  </div>
+</header>
+
+<main>
+
+  <div id="error-banner">⚠ Cannot reach router — retrying…</div>
+
+  <!-- HERO SAVINGS BANNER -->
+  <div class="savings-hero">
+    <div class="savings-hero-left">
+      <div class="savings-hero-title">💰 Total Saved vs All-Cloud Cost</div>
+      <div class="savings-hero-amount" id="hero-saved">$0.00</div>
+      <div class="savings-hero-sub">
+        Actual cost: <strong id="hero-actual" style="color:var(--green)">$0.00</strong>
+        &nbsp;·&nbsp;
+        All-cloud would cost: <strong id="hero-cloud" style="color:var(--red)">$0.00</strong>
+      </div>
+      <div style="margin-top:12px;background:var(--surface2);border-radius:6px;height:8px;overflow:hidden;width:280px">
+        <div id="hero-bar" style="height:100%;border-radius:6px;background:var(--green);width:0%;transition:width .8s ease"></div>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:var(--muted)" id="hero-bar-label">0% of costs avoided</div>
+    </div>
+    <div class="savings-hero-right">
+      <div class="savings-pct-ring">
+        <svg width="90" height="90" viewBox="0 0 90 90">
+          <circle cx="45" cy="45" r="36" fill="none" stroke="#22263a" stroke-width="10"/>
+          <circle cx="45" cy="45" r="36" fill="none" stroke="#22c55e" stroke-width="10"
+            id="savings-ring" stroke-dasharray="0 226.2" stroke-linecap="round"
+            style="transition:stroke-dasharray .8s ease"/>
+        </svg>
+        <div class="savings-pct-label">
+          <div class="savings-pct-num" id="savings-pct">0%</div>
+          <div class="savings-pct-text">saved</div>
+        </div>
+      </div>
+      <div id="tier-pill">–</div>
+    </div>
+    <div style="border-left:1px solid var(--border);padding-left:28px;display:flex;flex-direction:column;gap:14px;min-width:140px">
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">Requests Routed</div>
+        <div style="font-size:28px;font-weight:800;color:var(--accent)" id="hero-requests">0</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">Tokens Saved</div>
+        <div style="font-size:22px;font-weight:800;color:var(--purple)" id="hero-tok-saved">0</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">Errors</div>
+        <div style="font-size:22px;font-weight:800;color:var(--red)" id="hero-errors">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODEL LOAD CARDS -->
+  <div class="panel">
+    <div class="panel-header">
+      <span>Model Load Distribution</span>
+      <span style="font-size:10px">requests · tokens · estimated cost</span>
+    </div>
+    <div class="panel-body">
+      <div class="model-grid" id="model-grid">
+        <div class="empty">No data yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIER + TOKEN SPLIT -->
+  <div class="row">
+
+    <div class="panel">
+      <div class="panel-header"><span>Routing Distribution</span></div>
+      <div class="panel-body">
+        <div class="tier-row">
+          <div class="tier-item">
+            <div class="tier-label-row">
+              <div class="tier-name"><span class="tier-badge badge-simple">LOCAL</span> Qwen3 only · 1–3</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="tier-pct" id="pct-simple">0%</span>
+                <span class="tier-count c-green" id="t-simple">0</span>
+              </div>
+            </div>
+            <div class="bar-track"><div class="bar-fill fill-simple" id="b-simple" style="width:0%"></div></div>
+          </div>
+          <div class="tier-item">
+            <div class="tier-label-row">
+              <div class="tier-name"><span class="tier-badge badge-medium">HYBRID</span> Plan+Exec+Polish · 4–6</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="tier-pct" id="pct-medium">0%</span>
+                <span class="tier-count c-yellow" id="t-medium">0</span>
+              </div>
+            </div>
+            <div class="bar-track"><div class="bar-fill fill-medium" id="b-medium" style="width:0%"></div></div>
+          </div>
+          <div class="tier-item">
+            <div class="tier-label-row">
+              <div class="tier-name"><span class="tier-badge badge-hard">CLOUD</span> Plan+Exec+Polish · 7–10</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="tier-pct" id="pct-hard">0%</span>
+                <span class="tier-count c-red" id="t-hard">0</span>
+              </div>
+            </div>
+            <div class="bar-track"><div class="bar-fill fill-hard" id="b-hard" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><span>Token Split</span></div>
+      <div class="panel-body">
+        <div class="token-split">
+          <div class="donut-wrap">
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#22263a" stroke-width="12"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" stroke-width="12"
+                id="donut-in" stroke-dasharray="0 251.2" stroke-linecap="round"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#a855f7" stroke-width="12"
+                id="donut-out" stroke-dasharray="0 251.2" stroke-linecap="round"/>
+            </svg>
+            <div class="donut-center">
+              <div class="donut-total" id="donut-total">0</div>
+              <div class="donut-lbl">total</div>
+            </div>
+          </div>
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--blue)"></div>
+              Input
+              <span class="legend-val c-blue" id="l-input">0</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--purple)"></div>
+              Output
+              <span class="legend-val c-purple" id="l-output">0</span>
+            </div>
+            <div class="legend-item" style="margin-top:6px;border-top:1px solid var(--border);padding-top:8px">
+              <div class="legend-dot" style="background:var(--accent)"></div>
+              Total
+              <span class="legend-val c-accent" id="l-total">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- COST TREND CHART -->
+  <div class="panel">
+    <div class="panel-header"><span>Cumulative Savings Over Time</span><span style="font-size:10px" id="trend-range">–</span></div>
+    <div class="panel-body">
+      <div id="trend-chart-wrap">
+        <svg id="trend-chart" width="100%" height="120" viewBox="0 0 800 120" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="savings-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#22c55e" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#22c55e" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div id="trend-tooltip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALL BREAKDOWN + ACTIVITY -->
+  <div class="row">
+
+    <div class="panel">
+      <div class="panel-header"><span>Call Breakdown</span><span style="font-size:10px">per call type</span></div>
+      <div class="panel-body">
+        <table class="call-table">
+          <thead><tr><th>Type</th><th>Count</th><th>Input</th><th>Output</th></tr></thead>
+          <tbody id="call-breakdown-body"><tr><td colspan="4" class="empty">No data yet</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><span>Recent Activity</span><span style="font-size:10px">last 20</span></div>
+      <div class="panel-body">
+        <div class="activity-list" id="activity-list"><div class="empty">No activity yet</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CONVERSATIONS -->
+  <div class="panel">
+    <div class="panel-header">
+      <span>Active Conversations</span>
+      <span id="conv-count" style="font-size:10px">0 in memory</span>
+    </div>
+    <div class="panel-body">
+      <div class="conv-list" id="conv-list"><div class="empty">No active conversations</div></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const ICONS = { classify:'🧠', plan:'🔴', execute:'⚙️', polish:'✨' };
+  const TIER_COLORS = { simple:'var(--green)', medium:'var(--yellow)', hard:'var(--red)' };
+  const C = 2 * Math.PI * 40;       // donut circumference (r=40)
+  const RC = 2 * Math.PI * 36;      // savings ring circumference (r=36)
+
+  // pricing: $ per 1M tokens (mirrors router.py MODEL_PRICING)
+  const PRICING = {
+    'Qwen3.6-35B-A3B-UD-Q4_K_M.gguf': { input: 0, output: 0, label: 'Local · Free', cls: 'cost-local' },
+    'gpt-4o-mini':       { input: 0.10, output: 0.40, label: 'Classify',     cls: 'cost-local' },
+    'claude-sonnet-4.6': { input: 3.00, output:15.00, label: 'Cloud API',    cls: 'cost-cloud' },
+  };
+  const MODEL_COLORS = ['#6366f1','#22c55e','#f97316','#ec4899','#a855f7','#06b6d4','#eab308'];
+
+  function fmt(n) {
+    n = n || 0;
+    if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1)+'k';
+    return String(Math.round(n));
+  }
+  function fmtCost(d) {
+    if (d === 0) return '$0.00';
+    if (d < 0.01) return `$${d.toFixed(4)}`;
+    return `$${d.toFixed(2)}`;
+  }
+
+  function tierBadge(tier) {
+    const cls = { simple:'badge-simple', medium:'badge-medium', hard:'badge-hard' };
+    return `<span class="tier-badge ${cls[tier]||''}">${(tier||'?').toUpperCase()}</span>`;
+  }
+
+  function savingsTier(pct) {
+    if (pct >= 90) return ['💎 Diamond','pill-diamond'];
+    if (pct >= 75) return ['🔷 Platinum','pill-platinum'];
+    if (pct >= 60) return ['🏆 Gold','pill-gold'];
+    if (pct >= 40) return ['🥈 Silver','pill-silver'];
+    if (pct >  0)  return ['🥉 Bronze','pill-bronze'];
+    return ['–',''];
+  }
+
+  function estimateCost(model, inputTok, outputTok) {
+    const p = PRICING[model];
+    if (!p) return 0;
+    return (inputTok / 1e6 * p.input) + (outputTok / 1e6 * p.output);
+  }
+
+  function updateDonut(input, output) {
+    const total = input + output || 1;
+    const inArc  = (input  / total) * C;
+    const outArc = (output / total) * C;
+    document.getElementById('donut-in').setAttribute('stroke-dasharray',  `${inArc.toFixed(1)} ${C}`);
+    const outEl = document.getElementById('donut-out');
+    outEl.setAttribute('stroke-dasharray',  `${outArc.toFixed(1)} ${C}`);
+    outEl.setAttribute('stroke-dashoffset', `-${inArc.toFixed(1)}`);
+    document.getElementById('donut-total').textContent = fmt(input + output);
+  }
+
+  function renderModelGrid(models, totalReqs) {
+    const el = document.getElementById('model-grid');
+    if (!models || !Object.keys(models).length) { el.innerHTML = '<div class="empty">No data yet</div>'; return; }
+
+    const entries = Object.entries(models);
+    const maxReq = Math.max(...entries.map(([,v]) => v.count), 1);
+
+    el.innerHTML = entries.map(([name, v], i) => {
+      const color = MODEL_COLORS[i % MODEL_COLORS.length];
+      const p = PRICING[name] || {};
+      const cost = estimateCost(name, v.input_tokens, v.output_tokens);
+      const costTag = p.cls
+        ? `<span class="model-cost-tag ${p.cls}">${p.label} · ${fmtCost(cost)}</span>`
+        : `<span class="model-cost-tag" style="background:var(--surface);border:1px solid var(--border)">${fmtCost(cost)}</span>`;
+      const pct = ((v.count / totalReqs) * 100).toFixed(0);
+      const barPct = ((v.count / maxReq) * 100).toFixed(1);
+      return `
+        <div class="model-card">
+          <div class="model-card-header">
+            <div class="model-name">
+              <div class="model-dot" style="background:${color}"></div>
+              ${name}
+            </div>
+            ${costTag}
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted)">Requests handled</div>
+            <div class="model-requests" style="color:${color}">${fmt(v.count)} <span style="font-size:14px;color:var(--muted)">(${pct}%)</span></div>
+          </div>
+          <div class="model-bar-row">
+            <div class="model-bar-label"><span>Load</span><span>${pct}%</span></div>
+            <div class="model-bar-track"><div class="model-bar-fill" style="width:${barPct}%;background:${color}"></div></div>
+          </div>
+          <div class="model-stats-row">
+            <div class="model-stat">
+              <div class="model-stat-label">Input tok</div>
+              <div class="model-stat-val c-blue">${fmt(v.input_tokens)}</div>
+            </div>
+            <div class="model-stat">
+              <div class="model-stat-label">Output tok</div>
+              <div class="model-stat-val c-purple">${fmt(v.output_tokens)}</div>
+            </div>
+            <div class="model-stat">
+              <div class="model-stat-label">Total tok</div>
+              <div class="model-stat-val">${fmt(v.input_tokens + v.output_tokens)}</div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderCallBreakdown(breakdown) {
+    const tbody = document.getElementById('call-breakdown-body');
+    if (!breakdown || !Object.keys(breakdown).length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">No data yet</td></tr>'; return;
+    }
+    const order = ['classify','plan','execute','polish'];
+    const keys = [...new Set([...order, ...Object.keys(breakdown)])];
+    tbody.innerHTML = keys.filter(k => breakdown[k]).map(k => {
+      const d = breakdown[k];
+      return `<tr>
+        <td><span class="call-icon">${ICONS[k]||'•'}</span>${k}</td>
+        <td class="num">${fmt(d.count)}</td>
+        <td class="num c-blue">${fmt(d.input_tokens)}</td>
+        <td class="num c-purple">${fmt(d.output_tokens)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderActivity(history) {
+    const el = document.getElementById('activity-list');
+    if (!history?.length) { el.innerHTML = '<div class="empty">No activity yet</div>'; return; }
+    el.innerHTML = [...history].reverse().slice(0, 20).map(h => `
+      <div class="activity-item">
+        <span class="act-time">${h.time}</span>
+        ${tierBadge(h.tier)}
+        <span class="act-diff" style="color:${TIER_COLORS[h.tier]||'var(--text)'}">${h.difficulty}/10</span>
+      </div>`).join('');
+  }
+
+  function renderConversations(convs, count) {
+    document.getElementById('conv-count').textContent = `${count} in memory`;
+    const el = document.getElementById('conv-list');
+    if (!convs?.length) { el.innerHTML = '<div class="empty">No active conversations</div>'; return; }
+    el.innerHTML = convs.map(c => `
+      <div class="conv-item">
+        ${tierBadge(c.tier)}
+        <span class="conv-key">${c.key}</span>
+        <span style="color:${TIER_COLORS[c.tier]||'var(--text)'};font-weight:700;flex-shrink:0">${c.difficulty}/10</span>
+      </div>`).join('');
+  }
+
+  async function refresh() {
+    try {
+      const [dash, convs] = await Promise.all([
+        fetch('/dashboard').then(r => r.json()),
+        fetch('/conversations').then(r => r.json()),
+      ]);
+      document.getElementById('error-banner').style.display = 'none';
+
+      const totalReqs  = dash.total_requests || 0;
+      const tokSaved   = dash.tokens_saved   || 0;
+      const models     = dash.models         || {};
+
+      // ── use backend-computed savings (accounts for tier-based routing) ──
+      const cs = dash.cost_summary || {};
+      let actualCost = cs.actual_cost_usd || 0;
+      let cloudCost  = cs.hypothetical_cost_usd || 0;
+      let saved      = cs.savings_usd || 0;
+      const savedPct = cloudCost > 0 ? Math.round((saved / cloudCost) * 100) : 0;
+
+      // ── hero banner ───────────────────────────────────────────────────
+      document.getElementById('hero-saved').textContent    = fmtCost(saved);
+      document.getElementById('hero-actual').textContent   = fmtCost(actualCost);
+      document.getElementById('hero-cloud').textContent    = fmtCost(cloudCost);
+      document.getElementById('hero-requests').textContent = fmt(totalReqs);
+      document.getElementById('hero-tok-saved').textContent= fmt(tokSaved);
+      document.getElementById('hero-errors').textContent   = fmt(dash.errors||0);
+      document.getElementById('hero-bar').style.width      = `${savedPct}%`;
+      document.getElementById('hero-bar-label').textContent= `${savedPct}% of costs avoided`;
+      document.getElementById('savings-pct').textContent   = `${savedPct}%`;
+
+      // savings ring
+      const arc = (savedPct / 100) * RC;
+      document.getElementById('savings-ring').setAttribute('stroke-dasharray', `${arc.toFixed(1)} ${RC}`);
+
+      // tier pill
+      const [tierLabel, tierCls] = savingsTier(savedPct);
+      document.getElementById('tier-pill').innerHTML = tierCls
+        ? `<span class="tier-pill ${tierCls}">${tierLabel}</span>` : tierLabel;
+
+      // ── model grid ────────────────────────────────────────────────────
+      renderModelGrid(models, totalReqs || 1);
+
+      // ── tier distribution ─────────────────────────────────────────────
+      const tiers = dash.tiers || {};
+      const tierTotal = (tiers.simple||0)+(tiers.medium||0)+(tiers.hard||0) || 1;
+      ['simple','medium','hard'].forEach(t => {
+        const v = tiers[t] || 0;
+        const pct = ((v / tierTotal)*100).toFixed(0);
+        document.getElementById(`t-${t}`).textContent   = v;
+        document.getElementById(`pct-${t}`).textContent = `${pct}%`;
+        document.getElementById(`b-${t}`).style.width   = `${pct}%`;
+      });
+
+      // ── token donut ───────────────────────────────────────────────────
+      updateDonut(totalIn, totalOut);
+      document.getElementById('l-input').textContent  = fmt(totalIn);
+      document.getElementById('l-output').textContent = fmt(totalOut);
+      document.getElementById('l-total').textContent  = fmt(totalIn + totalOut);
+
+      // ── call breakdown ────────────────────────────────────────────────
+      renderCallBreakdown(dash.call_breakdown);
+
+      // ── activity + conversations ──────────────────────────────────────
+      renderActivity(dash.recent_activity);
+      renderConversations(convs.conversations, convs.count);
+
+      document.getElementById('last-updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+
+    } catch(e) {
+      document.getElementById('error-banner').style.display = 'block';
+    }
+  }
+
+  // ── pause / resume auto-refresh ──────────────────────────────────────────
+  let paused = false;
+  function togglePause() {
+    paused = !paused;
+    const btn = document.getElementById('pause-btn');
+    btn.textContent = paused ? 'RESUME' : 'PAUSE';
+    btn.style.color = paused ? 'var(--yellow)' : 'var(--muted)';
+  }
+
+  // ── cost trend chart ─────────────────────────────────────────────────────
+  const CHART_W = 800, CHART_H = 120;
+  const CHART_PAD = { top: 10, right: 10, bottom: 20, left: 55 };
+  const chartInnerW = CHART_W - CHART_PAD.left - CHART_PAD.right;
+  const chartInnerH = CHART_H - CHART_PAD.top - CHART_PAD.bottom;
+
+  function renderTrendChart(trend) {
+    const svg = document.getElementById('trend-chart');
+    const tooltip = document.getElementById('trend-tooltip');
+    if (!trend?.length) {
+      // Clear chart, show empty state
+      while (svg.childNodes.length > 1) svg.removeChild(svg.lastChild);
+      document.getElementById('trend-range').textContent = '–';
+      return;
+    }
+
+    const data = trend.map(h => ({ time: h.epoch, savings: h.savings || 0, tier: h.tier, timeStr: h.time }));
+    const maxSavings = Math.max(...data.map(d => d.savings), 0.01);
+    const minEpoch = data[0].epoch;
+    const maxEpoch = data[data.length - 1].epoch;
+    const epochSpan = maxEpoch - minEpoch || 1;
+
+    document.getElementById('trend-range').textContent = `${data[0].timeStr} → ${data[data.length - 1].timeStr}`;
+
+    // Build path points
+    const points = data.map((d, i) => {
+      const x = CHART_PAD.left + ((d.time - minEpoch) / epochSpan) * chartInnerW;
+      const y = CHART_PAD.top + chartInnerH - (d.savings / maxSavings) * chartInnerH;
+      return `${x},${y}`;
+    });
+
+    // Y-axis grid lines and labels
+    let gridHtml = '';
+    const yTicks = 4;
+    for (let i = 0; i <= yTicks; i++) {
+      const y = CHART_PAD.top + (i / yTicks) * chartInnerH;
+      const val = maxSavings * (1 - i / yTicks);
+      gridHtml += `<line x1="${CHART_PAD.left}" y1="${y}" x2="${CHART_W - CHART_PAD.right}" y2="${y}" class="trend-grid"/>`;
+      gridHtml += `<text x="${CHART_PAD.left - 6}" y="${y + 3}" text-anchor="end" class="trend-label">$${val < 0.01 ? val.toFixed(4) : val.toFixed(2)}</text>`;
+    }
+
+    // X-axis labels (show up to 5 evenly spaced)
+    const xTickCount = Math.min(data.length, 5);
+    const xStep = Math.floor(data.length / xTickCount);
+    for (let i = 0; i < data.length && i < xTickCount * xStep; i += xStep) {
+      const d = data[i];
+      const x = CHART_PAD.left + ((d.time - minEpoch) / epochSpan) * chartInnerW;
+      gridHtml += `<text x="${x}" y="${CHART_H - 2}" text-anchor="middle" class="trend-label">${d.timeStr}</text>`;
+    }
+
+    // Build SVG elements
+    let pathD = `M${points[0]}`;
+    for (let i = 1; i < points.length; i++) pathD += ` L${points[i]}`;
+
+    // Area path (close to bottom)
+    const areaD = pathD + ` L${CHART_PAD.left + ((data[data.length - 1].time - minEpoch) / epochSpan) * chartInnerW},${CHART_PAD.top + chartInnerH} L${CHART_PAD.left},${CHART_PAD.top + chartInnerH} Z`;
+
+    // Hover interaction elements
+    const hoverLine = `<line id="trend-hover" x1="0" y1="${CHART_PAD.top}" x2="0" y2="${CHART_PAD.top + chartInnerH}" class="trend-hover-line"/>`;
+
+    // Clear existing SVG content (keep defs)
+    while (svg.childNodes.length > 1) svg.removeChild(svg.lastChild);
+
+    // Insert grid, area, line, dots after defs
+    const frag = document.createDocumentFragment();
+    const gridEl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    gridEl.innerHTML = gridHtml;
+    for (const child of gridEl.children) frag.appendChild(child);
+
+    const areaEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    areaEl.setAttribute('d', areaD);
+    areaEl.setAttribute('class', 'trend-area');
+    frag.appendChild(areaEl);
+
+    const lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    lineEl.setAttribute('d', pathD);
+    lineEl.setAttribute('class', 'trend-line');
+    frag.appendChild(lineEl);
+
+    // Dots at each data point
+    for (const pt of points) {
+      const [x, y] = pt.split(',');
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('cx', x);
+      dot.setAttribute('cy', y);
+      dot.setAttribute('r', 3);
+      dot.setAttribute('class', 'trend-dot');
+      frag.appendChild(dot);
+    }
+
+    svg.appendChild(frag);
+    svg.insertAdjacentHTML('afterbegin', hoverLine);
+
+    // Hover interaction
+    const wrap = document.getElementById('trend-chart-wrap');
+    wrap.onmousemove = function(e) {
+      const rect = svg.getBoundingClientRect();
+      const scaleX = CHART_W / rect.width;
+      const mx = (e.clientX - rect.left) * scaleX;
+
+      if (mx < CHART_PAD.left || mx > CHART_W - CHART_PAD.right) {
+        tooltip.style.display = 'none';
+        document.getElementById('trend-hover').style.opacity = '0';
+        return;
+      }
+
+      // Find nearest data point
+      let best = 0, bestDist = Infinity;
+      for (let i = 0; i < data.length; i++) {
+        const x = CHART_PAD.left + ((data[i].time - minEpoch) / epochSpan) * chartInnerW;
+        const dist = Math.abs(x - mx);
+        if (dist < bestDist) { bestDist = dist; best = i; }
+      }
+
+      const d = data[best];
+      const px = CHART_PAD.left + ((d.time - minEpoch) / epochSpan) * chartInnerW;
+      document.getElementById('trend-hover').setAttribute('x1', px);
+      document.getElementById('trend-hover').setAttribute('x2', px);
+      document.getElementById('trend-hover').style.opacity = '1';
+
+      // Highlight nearest dot
+      const dots = svg.querySelectorAll('.trend-dot');
+      dots.forEach((dot, i) => { dot.style.opacity = i === best ? 1 : 0; });
+
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = `<span class="tt-time">${d.timeStr}</span> · ${d.tier.toUpperCase()}<br><span class="tt-savings">$${d.savings < 0.01 ? d.savings.toFixed(4) : d.savings.toFixed(2)} saved</span>`;
+
+      // Position tooltip
+      const tipW = tooltip.offsetWidth;
+      let tx = (px / scaleX) - tipW / 2;
+      tx = Math.max(0, Math.min(tx, rect.width - tipW));
+      tooltip.style.left = tx + 'px';
+      tooltip.style.top = '-50px';
+    };
+
+    wrap.onmouseleave = function() {
+      tooltip.style.display = 'none';
+      document.getElementById('trend-hover').style.opacity = '0';
+      svg.querySelectorAll('.trend-dot').forEach(d => d.style.opacity = 0);
+    };
+  }
+
+  async function refresh() {
+    try {
+      const [dash, convs] = await Promise.all([
+        fetch('/dashboard').then(r => r.json()),
+        fetch('/conversations').then(r => r.json()),
+      ]);
+      document.getElementById('error-banner').style.display = 'none';
+
+      const totalReqs  = dash.total_requests || 0;
+      const tokSaved   = dash.tokens_saved   || 0;
+      const models     = dash.models         || {};
+
+      // ── use backend-computed savings (accounts for tier-based routing) ──
+      const cs = dash.cost_summary || {};
+      let actualCost = cs.actual_cost_usd || 0;
+      let cloudCost  = cs.hypothetical_cost_usd || 0;
+      let saved      = cs.savings_usd || 0;
+      const savedPct = cloudCost > 0 ? Math.round((saved / cloudCost) * 100) : 0;
+
+      // ── hero banner ───────────────────────────────────────────────────
+      document.getElementById('hero-saved').textContent    = fmtCost(saved);
+      document.getElementById('hero-actual').textContent   = fmtCost(actualCost);
+      document.getElementById('hero-cloud').textContent    = fmtCost(cloudCost);
+      document.getElementById('hero-requests').textContent = fmt(totalReqs);
+      document.getElementById('hero-tok-saved').textContent= fmt(tokSaved);
+      document.getElementById('hero-errors').textContent   = fmt(dash.errors||0);
+      document.getElementById('hero-bar').style.width      = `${savedPct}%`;
+      document.getElementById('hero-bar-label').textContent= `${savedPct}% of costs avoided`;
+      document.getElementById('savings-pct').textContent   = `${savedPct}%`;
+
+      // savings ring
+      const arc = (savedPct / 100) * RC;
+      document.getElementById('savings-ring').setAttribute('stroke-dasharray', `${arc.toFixed(1)} ${RC}`);
+
+      // tier pill
+      const [tierLabel, tierCls] = savingsTier(savedPct);
+      document.getElementById('tier-pill').innerHTML = tierCls
+        ? `<span class="tier-pill ${tierCls}">${tierLabel}</span>` : tierLabel;
+
+      // ── model grid ────────────────────────────────────────────────────
+      renderModelGrid(models, totalReqs || 1);
+
+      // ── tier distribution ─────────────────────────────────────────────
+      const tiers = dash.tiers || {};
+      const tierTotal = (tiers.simple||0)+(tiers.medium||0)+(tiers.hard||0) || 1;
+      ['simple','medium','hard'].forEach(t => {
+        const v = tiers[t] || 0;
+        const pct = ((v / tierTotal)*100).toFixed(0);
+        document.getElementById(`t-${t}`).textContent   = v;
+        document.getElementById(`pct-${t}`).textContent = `${pct}%`;
+        document.getElementById(`b-${t}`).style.width   = `${pct}%`;
+      });
+
+      // ── token donut ───────────────────────────────────────────────────
+      updateDonut(totalIn, totalOut);
+      document.getElementById('l-input').textContent  = fmt(totalIn);
+      document.getElementById('l-output').textContent = fmt(totalOut);
+      document.getElementById('l-total').textContent  = fmt(totalIn + totalOut);
+
+      // ── call breakdown ────────────────────────────────────────────────
+      renderCallBreakdown(dash.call_breakdown);
+
+      // ── cost trend chart ──────────────────────────────────────────────
+      renderTrendChart(dash.trend);
+
+      // ── activity + conversations ──────────────────────────────────────
+      renderActivity(dash.recent_activity);
+      renderConversations(convs.conversations, convs.count);
+
+      document.getElementById('last-updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+
+    } catch(e) {
+      document.getElementById('error-banner').style.display = 'block';
+    }
+  }
+
+  refresh();
+  // Only auto-refresh if not paused
+  let intervalId = setInterval(() => { if (!paused) refresh(); }, 3000);
+</script>
+</body>
+</html>
