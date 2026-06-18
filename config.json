@@ -6,36 +6,39 @@
       "pricing": {
         "input": 3.0,
         "output": 15.0
-      }
+      },
+      "auth": {}
     },
     "local": {
-      "name": "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
-      "url": "http://localhost:8081/v1/chat/completions",
+      "name": "gpt-5-mini",
+      "url": "http://localhost:9002/v1/chat/completions",
       "pricing": {
-        "input": 0.0,
-        "output": 0.0
-      }
+        "input": 0.25,
+        "output": 2.0
+      },
+      "auth": {}
     },
     "classify": {
-      "name": "gpt-4o-mini",
-      "url": "http://localhost:4141/v1/chat/completions",
+      "name": "gpt-5-mini",
+      "url": "http://localhost:9002/v1/chat/completions",
       "pricing": {
-        "input": 0.1,
-        "output": 0.4
-      }
+        "input": 0.25,
+        "output": 2.0
+      },
+      "auth": {}
     }
   },
   "routing": {
     "difficulty_bands": {
       "simple_max": 3,
-      "medium_max": 6
+      "medium_max": 5
     },
     "sonnet_tokens_saved_per_simple": 900,
     "max_ctx_messages": 12,
-    "max_tool_result_chars": 8000
+    "max_tool_result_chars": 80000
   },
   "token_budgets": {
-    "classify_max_tokens": 10,
+    "classify_max_tokens": 100,
     "plan_max_tokens": 400,
     "polish_max_tokens": 500,
     "execute_max_tokens": 8192
